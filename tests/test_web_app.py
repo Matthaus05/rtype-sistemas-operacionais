@@ -35,13 +35,34 @@ class BrowserInterfaceTests(unittest.TestCase):
         self.assertEqual(response.status, 200)
         self.assertIn("Starfighter", page)
         self.assertIn("<canvas", page)
-        self.assertIn("/api/flight/input", page)
+        self.assertIn('href="/styles.css"', page)
+        self.assertIn('src="/app.js"', page)
+        self.assertNotIn("<style>", page)
+        self.assertNotIn("<script>", page)
+
+    def test_frontend_assets_are_served_with_their_content_types(self) -> None:
+        assets = (
+            ("/styles.css", "text/css"),
+            ("/app.js", "text/javascript"),
+        )
+        for path, content_type in assets:
+            with self.subTest(path=path):
+                with urllib.request.urlopen(f"{self.base_url}{path}", timeout=2) as response:
+                    self.assertEqual(response.status, 200)
+                    self.assertEqual(response.headers.get_content_type(), content_type)
+                    content = response.read().decode("utf-8")
+                    self.assertTrue(content)
+                    if path == "/app.js":
+                        self.assertIn("/api/flight/input", content)
 
     def test_ship_sprites_are_served_as_a_png(self) -> None:
-        with urllib.request.urlopen(f"{self.base_url}/assets/ships.png", timeout=2) as response:
-            self.assertEqual(response.status, 200)
-            self.assertEqual(response.headers.get_content_type(), "image/png")
-            self.assertTrue(response.read().startswith(b"\x89PNG\r\n\x1a\n"))
+        for filename in ("ships.png", "bosses.png"):
+            with self.subTest(filename=filename):
+                url = f"{self.base_url}/assets/{filename}"
+                with urllib.request.urlopen(url, timeout=2) as response:
+                    self.assertEqual(response.status, 200)
+                    self.assertEqual(response.headers.get_content_type(), "image/png")
+                    self.assertTrue(response.read().startswith(b"\x89PNG\r\n\x1a\n"))
 
     def test_flight_endpoints_start_a_mission_and_move_the_ship(self) -> None:
         with urllib.request.urlopen(f"{self.base_url}/api/flight", timeout=2) as response:
