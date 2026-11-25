@@ -5,51 +5,72 @@
 ### Slide 1 — A missão começa
 
 **Starfighter: Frontline Protocol**  
-Um combate espacial de terminal inspirado em clássicos como R-Type — feito para transformar conceitos de Sistemas Operacionais em uma missão jogável.
+Jogo de nave 2D com rolagem horizontal, inspirado em clássicos como R-Type.
+A missão combina combate espacial com os conceitos de Sistemas Operacionais
+estudados em sala.
 
 ### Slide 2 — O problema e a ideia
 
-Como mostrar concorrência e sincronização de um jeito prático e fácil de entender? Em nosso jogo, a simulação e a chegada de inimigos acontecem em threads separadas, coordenadas por semáforos.
+Como demonstrar concorrência durante uma partida? A simulação atualiza a fase
+continuamente enquanto outra thread prepara as ondas de inimigos. Semáforos
+coordenam essas duas atividades.
 
 ### Slide 3 — O desafio do jogador
 
-Sobreviva a 18 turnos, destrua inimigos e proteja o casco. Cada decisão importa: disparar para marcar pontos, ativar o escudo no momento certo ou aguardar.
+Pilote a nave, desvie dos disparos e planeje quando usar o escudo e o tiro
+carregado. Atravesse cinco ondas e derrote o chefe antes de perder os três
+pontos de casco.
 
 ### Slide 4 — Uma missão em funcionamento
 
-- Ondas chegam a cada três turnos.
-- Ataques acontecem a cada quatro turnos.
-- O escudo bloqueia um ataque no turno em que é ativado.
-- Vitória: completar a missão; derrota: perder todo o casco.
+- Mova a nave com as setas ou `W`, `A`, `S`, `D`.
+- Aperte `Espaço` para disparar ou segure e solte para lançar um tiro carregado.
+- Segure `Shift` para ativar o escudo e acompanhe o consumo de energia no painel.
+- Destrua inimigos para somar pontos. A derrota ocorre quando o casco chega a
+  zero. A vitória ocorre ao derrotar o chefe.
 
 ### Slide 5 — Sistemas Operacionais em ação
 
-- **Threads:** interface do jogador, simulação e produtor de ondas.
-- **Semáforos:** liberam ações, solicitam ondas e confirmam que uma onda foi criada antes de a simulação continuar.
-- **Lock:** protege os dados compartilhados contra atualizações concorrentes.
-- **Filas:** transportam comandos e resultados sem misturar responsabilidades.
+- **Thread de simulação.** Calcula movimento, projéteis e colisões em passos de
+  tempo fixos.
+- **Thread de ondas.** Prepara as formações de inimigos pedidas pela simulação.
+- **Semáforos.** Sinalizam quando a simulação deve acordar, quando há um pedido
+  de onda e quando a formação fica pronta.
+- **Lock.** Protege o estado que o navegador recebe enquanto o motor atualiza
+  a partida.
 
-### Slide 6 — O que torna o projeto interessante?
+### Slide 6 — Motor e interface
 
-É leve, roda no terminal, não precisa de bibliotecas externas e deixa visível o papel de cada mecanismo de sincronização. A prioridade é o funcionamento do sistema concorrente — não gráficos ou processamento de imagens.
+O motor Python calcula as regras e o resultado da partida. O navegador envia
+os controles ao servidor local e desenha em Canvas os dados que recebe. O
+projeto usa a biblioteca padrão do Python.
 
 ### Slide 7 — Demonstração
 
-1. Execute `python game.py`.
-2. Use `f` para destruir inimigos e marcar pontos.
-3. Use `s` no turno de ataque para demonstrar o escudo.
-4. Mostre o código e a sincronização em `game.py`.
+1. Execute `python web_app.py`, abra `http://127.0.0.1:8000` e inicie a missão.
+2. Mova a nave na vertical e na horizontal enquanto o cenário passa.
+3. Mostre um disparo normal, um disparo carregado e o consumo de energia do
+   escudo.
+4. Em `flight.py`, mostre a solicitação de uma onda e o semáforo que sinaliza
+   quando os inimigos estão prontos.
 5. Execute `python -m unittest discover -s tests -v`.
 
 ### Slide 8 — Encerramento
 
-**Starfighter transforma threads e semáforos em parte da missão.**  
-Pronto para jogar, estudar e apresentar.
+Relembre o que acontece durante uma onda. O motor mantém a fase em movimento,
+recebe a formação da outra thread e incorpora os novos inimigos à partida.
 
 ## Fala de venda (PIT)
 
-"Imagine defender a fronteira espacial enquanto ondas de inimigos se aproximam. Em Starfighter: Frontline Protocol, cada turno conta: você escolhe quando atirar, proteger a nave ou esperar. Mas o jogo também tem uma missão por trás da tela: mostrar Sistemas Operacionais funcionando de verdade. A simulação e a chegada das ondas rodam em threads diferentes; semáforos coordenam cada ação e lock protege os dados compartilhados. Tudo roda no terminal, sem instalar bibliotecas extras, para que o foco fique no que importa: entender concorrência jogando. Você consegue sobreviver aos 18 turnos?"
+“Você pilota uma nave de patrulha e precisa atravessar cinco ondas de inimigos
+para alcançar o chefe. Em tempo real, você decide quando desviar, carregar um
+tiro ou gastar energia com o escudo. Enquanto isso, duas threads Python
+mantêm a missão em andamento. Uma move a nave e resolve as colisões. A outra
+prepara os inimigos. Os semáforos sincronizam a chegada de cada onda. Na
+demonstração, vamos jogar uma missão e acompanhar no código como essas duas
+threads cooperam.”
 
 ## Divisão sugerida para o grupo
 
-Cada participante deve apresentar uma parte da venda do jogo, conforme a orientação da disciplina. Uma divisão possível é: conceito e objetivo; regras e demonstração; threads e semáforos; explicação do código e testes.
+Distribuam entre os participantes a apresentação do conceito e do objetivo,
+a demonstração, a explicação de threads e semáforos e a explicação dos testes.

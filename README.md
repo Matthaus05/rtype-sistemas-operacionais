@@ -1,94 +1,76 @@
 # Starfighter: Frontline Protocol
 
-Um jogo didático de combate espacial em terminal, inspirado em jogos clássicos
-de nave de rolagem horizontal, como **R-Type**. O protótipo usa somente a
-biblioteca padrão do Python e demonstra concorrência com threads, semáforos e
-um lock. Não usa código, personagens, imagens, músicas ou outros recursos do
-jogo original.
+Jogo de nave 2D com rolagem horizontal e combate em tempo real. A missão e os
+elementos visuais são originais, com inspiração em clássicos do gênero como
+**R-Type**. O jogo roda no navegador e usa um motor em Python com threads e
+semáforos.
 
-## Tema e objetivo
+## Como jogar
 
-Você pilota uma nave de defesa na fronteira espacial. Sobreviva a 18 turnos,
-derrube inimigos e administre o escudo para proteger o casco. O objetivo da
-missão é terminar os 18 turnos sem perder os três pontos de casco.
+Atravesse cinco ondas de inimigos e derrote o chefe. A nave tem três pontos de
+casco. Desvie dos inimigos e dos projéteis, use o escudo quando necessário e
+carregue o canhão para causar mais dano.
 
-## Como funciona
+| Controle | Ação |
+| --- | --- |
+| Setas ou `W`, `A`, `S`, `D` | Mover a nave em quatro direções |
+| `Espaço` | Disparar. Segure para carregar e solte para lançar um tiro mais forte. |
+| `Shift` | Ativar o escudo enquanto houver energia |
 
-- Uma onda inimiga chega a cada três turnos.
-- Um ataque inimigo ocorre a cada quatro turnos se ainda houver inimigos.
-- `f` dispara: elimina um inimigo e soma 100 pontos; sem alvo, o disparo erra.
-- `s` ativa o escudo naquele turno e bloqueia um ataque.
-- `w` aguarda e não ataca.
-- `q` encerra a missão.
-- O jogo termina em vitória ao completar 18 turnos ou em derrota quando o casco
-  chega a zero.
-
-## Requisitos
-
-- Python 3.10 ou superior.
-- Nenhuma dependência externa, instalação ou conexão com a internet.
+Em telas sensíveis ao toque, use os botões na parte inferior da página.
 
 ## Executar
 
-No terminal, a partir da pasta do projeto:
+Na pasta do projeto, com Python 3.10 ou superior, inicie o servidor local.
+O projeto usa apenas a biblioteca padrão do Python.
 
 ```powershell
-python game.py
+python web_app.py
 ```
 
-Para executar os testes:
+Abra `http://127.0.0.1:8000` no navegador e inicie a missão. Para fechar o
+servidor, volte ao terminal e pressione `Ctrl+C`.
+
+Se o Windows abrir a Microsoft Store ao chamar `python`, execute o
+`python.exe` da sua instalação pelo caminho completo. Em uma instalação
+local padrão do Python 3.12, o comando é o seguinte.
+
+```powershell
+& "$env:LOCALAPPDATA\Programs\Python\Python312\python.exe" web_app.py
+```
+
+## Threads e semáforos
+
+O navegador desenha a fase em Canvas, envia o estado dos controles e recebe
+cópias do estado da partida. `web_app.py` recebe essas requisições HTTP locais.
+Em `flight.py`, o `FlightController` coordena duas threads de trabalho.
+
+- **Simulação.** Atualiza movimento, rolagem, projéteis, colisões, pontuação e
+  resultado da missão em passos fixos de 60 Hz.
+- **Produção de ondas.** Aguarda um pedido da simulação, prepara a formação de
+  inimigos e sinaliza que a onda está pronta.
+
+Os semáforos acordam a simulação e coordenam os pedidos e as respostas entre
+as duas threads. Um lock protege o estado compartilhado enquanto ele é
+atualizado ou copiado para o navegador.
+
+## Testes e protótipo de terminal
 
 ```powershell
 python -m unittest discover -s tests -v
 ```
 
-## Concorrência: threads e semáforos
+Os testes cobrem a simulação 2D, a comunicação HTTP e o protótipo de turnos.
+Esse protótipo pode ser executado com `python game.py`.
 
-`GameController` coordena três fluxos de execução:
+## Git
 
-1. **Thread principal:** apresenta o estado e lê os comandos do jogador.
-2. **Thread `simulation`:** avança os turnos, processa ações e ataques.
-3. **Thread `enemy-waves`:** produz ondas inimigas independentemente da thread
-   de simulação.
-
-Os semáforos sincronizam eventos sem busy waiting:
-
-- `_action_ready` libera a simulação somente quando há uma ação do jogador.
-- `_wave_requested` sinaliza à thread de ondas que uma onda deve ser produzida.
-- `_wave_created` confirma à simulação que a onda foi adicionada antes de
-  resolver a ação daquele turno.
-
-Os dados compartilhados (`GameState`) são protegidos por `_lock`, evitando
-leituras ou atualizações simultâneas inconsistentes. As filas transportam
-comandos e resultados entre a interface e a simulação.
-
-## Explicação do código-fonte
-
-- **`GameState`** reúne turno, casco, pontuação, inimigos, ondas e resultado.
-- **`GameController.__init__`** cria o estado, as filas, o lock, os semáforos e
-  as duas threads de trabalho.
-- **`start()`** inicia o produtor de ondas e a simulação.
-- **`submit()`** valida a entrada, envia um comando e libera `_action_ready`;
-  depois espera a resposta da simulação.
-- **`_run_simulation()`** aguarda cada comando com `_action_ready.acquire()`.
-  Quando é hora de uma nova onda, libera `_wave_requested` e espera
-  `_wave_created`. Em seguida processa disparo/escudo/espera e atualiza o estado
-  sob o lock.
-- **`_produce_waves()`** espera `_wave_requested`, adiciona inimigos sob o lock
-  e libera `_wave_created` para sinalizar conclusão.
-- **`snapshot()`** fornece uma cópia consistente do estado para a interface.
-- **`stop()`** sinaliza encerramento, acorda as threads bloqueadas e aguarda
-  seu término.
-- **`play()`** implementa a interface de terminal; os testes automatizados
-  estão em `tests/test_game.py`.
+Use `git status --short --branch` na pasta do projeto para conferir a branch
+e as mudanças locais. Se você recebeu uma cópia em ZIP e quer conservar o
+histórico do grupo, clone o repositório do grupo e copie para ele as mudanças
+que precisa manter.
 
 ## Apresentação PIT
 
-Veja [docs/apresentacao-pit.md](docs/apresentacao-pit.md) para o roteiro de
-slides, fala de venda e demonstração ao vivo.
-
-## Nota
-
-Projeto acadêmico original, sem afiliação ou endosso dos criadores ou
-detentores dos direitos de R-Type. O nome é citado apenas para indicar a
-inspiração geral.
+Veja o roteiro de slides, a fala de venda e a demonstração ao vivo.
+[Apresentação PIT](docs/apresentacao-pit.md)

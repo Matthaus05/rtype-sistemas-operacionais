@@ -1,4 +1,8 @@
+import threading
 import unittest
+from concurrent.futures import Future
+from typing import Any
+from unittest.mock import patch
 
 from game import GameController
 
@@ -38,6 +42,53 @@ class GameControllerTests(unittest.TestCase):
             self.game.submit("warp")
 
         self.assertEqual(self.game.snapshot()["turn"], 0)
+
+    def test_stopped_game_rejects_commands_without_blocking(self) -> None:
+        self.game.stop()
+
+        with self.assertRaisesRegex(RuntimeError, "not accepting commands"):
+            self._submit_in_background("wait").result(timeout=2)
+
+    def test_quit_releases_a_command_already_in_the_queue(self) -> None:
+        quit_started = threading.Event()
+        finish_quit = threading.Event()
+        wait_queued = threading.Event()
+        apply_command = self.game._apply_command
+        enqueue = self.game._commands.put
+
+        def delayed_quit(command: str) -> dict[str, Any]:
+            quit_started.set()
+            finish_quit.wait()
+            return apply_command(command)
+
+        def signal_enqueue(item: Any) -> None:
+            enqueue(item)
+            wait_queued.set()
+
+        with patch.object(self.game, "_apply_command", side_effect=delayed_quit):
+            quit_result = self._submit_in_background("quit")
+            try:
+                self.assertTrue(quit_started.wait(timeout=2))
+                with patch.object(self.game._commands, "put", side_effect=signal_enqueue):
+                    wait_result = self._submit_in_background("wait")
+                    self.assertTrue(wait_queued.wait(timeout=2))
+            finally:
+                finish_quit.set()
+            self.assertTrue(quit_result.result(timeout=2)["ended"])
+            with self.assertRaisesRegex(RuntimeError, "not accepting commands"):
+                wait_result.result(timeout=2)
+
+    def _submit_in_background(self, command: str) -> Future[dict[str, Any]]:
+        response: Future[dict[str, Any]] = Future()
+
+        def submit() -> None:
+            try:
+                response.set_result(self.game.submit(command))
+            except Exception as error:
+                response.set_exception(error)
+
+        threading.Thread(target=submit, daemon=True).start()
+        return response
 
 
 if __name__ == "__main__":

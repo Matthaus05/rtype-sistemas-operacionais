@@ -1,0 +1,874 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080d17">
+  <title>Starfighter: Frontline Protocol</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      background: #080d17;
+      color: #f1f7ff;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-synthesis: none;
+      --line: #253854;
+      --muted: #a1b3c9;
+      --cyan: #87f3ff;
+      --energy: #aab6ff;
+      --orange: #ff9e62;
+    }
+
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+
+    body {
+      min-width: 280px;
+      min-height: 100vh;
+      margin: 0;
+      background:
+        radial-gradient(ellipse at 50% 0%, #1b2540 0%, transparent 54%),
+        #080d17;
+    }
+
+    main {
+      width: min(100% - 36px, 1010px);
+      margin: 0 auto;
+      padding: clamp(20px, 5vw, 52px) 0 28px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 21px;
+    }
+
+    .flight-mark {
+      display: grid;
+      flex: 0 0 42px;
+      height: 42px;
+      place-items: center;
+      border: 1px solid #385771;
+      border-radius: 9px;
+      background: #101d32;
+      box-shadow: inset 0 0 16px #28415c;
+    }
+
+    .flight-mark::before {
+      width: 26px;
+      height: 24px;
+      background: var(--cyan);
+      clip-path: polygon(50% 2%, 98% 89%, 50% 73%, 2% 89%, 50% 2%, 50% 31%, 28% 69%, 50% 61%, 72% 69%, 50% 31%);
+      content: "";
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.05rem, 3vw, 1.58rem);
+      font-weight: 800;
+      line-height: 1.12;
+      letter-spacing: .055em;
+      text-transform: uppercase;
+    }
+
+    header p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: .75rem;
+      font-weight: 650;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+    }
+
+    .game-panel {
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #0b1423;
+      box-shadow: 0 20px 65px #03050e9c;
+    }
+
+    .hud {
+      display: grid;
+      grid-template-columns: .8fr .78fr .85fr 1.15fr 1.15fr;
+      gap: 6px;
+      margin: 0 0 10px;
+    }
+
+    .stat {
+      min-width: 0;
+      padding: 9px 12px 10px;
+      border: 1px solid #23344c;
+      border-radius: 7px;
+      background: #111e31;
+    }
+
+    .stat dt {
+      color: var(--muted);
+      font-size: .65rem;
+      font-weight: 750;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .stat dd {
+      display: flex;
+      min-height: 1.35rem;
+      align-items: center;
+      margin: 2px 0 0;
+      color: #f0f7ff;
+      font-variant-numeric: tabular-nums;
+      font-size: .96rem;
+      font-weight: 750;
+    }
+
+    #score { color: var(--cyan); }
+
+    #hull {
+      gap: 5px;
+      color: var(--orange);
+    }
+
+    .hull-segment {
+      width: 15px;
+      height: 10px;
+      border: 1px solid #995f4e;
+      transform: skewX(-15deg);
+    }
+
+    .hull-segment.filled {
+      border-color: var(--orange);
+      background: var(--orange);
+      box-shadow: 0 0 9px #ff9e6255;
+    }
+
+    progress {
+      display: block;
+      width: 100%;
+      max-width: 145px;
+      height: 7px;
+      overflow: hidden;
+      border: 0;
+      border-radius: 3px;
+      appearance: none;
+      background: #2b3b55;
+      color: var(--cyan);
+    }
+
+    progress::-webkit-progress-bar { background: #2b3b55; }
+    progress::-webkit-progress-value { background: currentColor; }
+    progress::-moz-progress-bar { background: currentColor; }
+    #shield-energy { color: var(--energy); }
+
+    .viewport {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid #32465d;
+      border-radius: 9px;
+      background: #050b17;
+      isolation: isolate;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      aspect-ratio: 16 / 9;
+    }
+
+    .menu {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      padding: clamp(12px, 6%, 54px);
+      background: linear-gradient(90deg, #060e1bef 0%, #080f1cd9 37%, #070d197a 64%, transparent);
+    }
+
+    .menu > div { width: min(100%, 355px); }
+
+    .menu h2 {
+      max-width: 9em;
+      margin: 0;
+      font-size: clamp(1.2rem, 5.7vw, 3.85rem);
+      line-height: .99;
+      letter-spacing: -.04em;
+    }
+
+    .menu p {
+      max-width: 27ch;
+      margin: clamp(6px, 2vw, 16px) 0 clamp(8px, 3vw, 23px);
+      color: #c5d1e3;
+      font-size: clamp(.72rem, 2.7vw, 1rem);
+      line-height: 1.45;
+    }
+
+    button {
+      border: 1px solid #5f899c;
+      border-radius: 7px;
+      background: #17344b;
+      color: #f3fbff;
+      font: inherit;
+      font-size: .82rem;
+      font-weight: 750;
+      cursor: pointer;
+    }
+
+    button:focus-visible {
+      outline: 3px solid #fff;
+      outline-offset: 3px;
+    }
+
+    button:disabled {
+      cursor: default;
+      opacity: .65;
+    }
+
+    #start {
+      min-height: 42px;
+      padding: 9px 17px;
+      border-color: #d0fbff;
+      background: var(--cyan);
+      color: #071722;
+      box-shadow: 0 0 23px #68dbf940;
+    }
+
+    #start:hover:not(:disabled) { background: #c5fbff; }
+
+    .notice {
+      position: absolute;
+      right: 8px;
+      bottom: 8px;
+      left: 8px;
+      width: fit-content;
+      max-width: calc(100% - 16px);
+      margin: 0 auto;
+      padding: 6px 10px;
+      border: 1px solid #ab615f;
+      border-radius: 5px;
+      background: #321d27;
+      color: #ffd2cf;
+      font-size: .77rem;
+    }
+
+    .keyboard-guide {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 9px 24px;
+      margin: 14px 3px 2px;
+      color: var(--muted);
+      font-size: .82rem;
+      line-height: 1.5;
+    }
+
+    kbd {
+      display: inline-block;
+      padding: 0 5px;
+      border: 1px solid #344961;
+      border-radius: 4px;
+      background: #142338;
+      color: #ecf3ff;
+      font: inherit;
+      font-size: .8rem;
+      white-space: nowrap;
+    }
+
+    .touch-guide,
+    .touch-controls { display: none; }
+
+    .touch-controls {
+      justify-content: space-between;
+      gap: 4px;
+      margin: 12px 2px 1px;
+      user-select: none;
+    }
+
+    .direction-pad {
+      display: grid;
+      grid-template-columns: repeat(3, 44px);
+      grid-template-rows: repeat(2, 44px);
+      gap: 4px;
+    }
+
+    .direction-pad button:first-child { grid-column: 2; }
+    .direction-pad button:nth-child(2) { grid-column: 1; }
+
+    .touch-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(48px, 1fr));
+      align-content: end;
+      gap: 4px;
+    }
+
+    .touch-controls button {
+      min-height: 44px;
+      padding: 0 5px;
+      touch-action: none;
+    }
+
+    .touch-controls button.pressed {
+      border-color: var(--cyan);
+      background: #2e5d70;
+    }
+
+    .touch-guide {
+      margin: 12px 2px 2px;
+      color: var(--muted);
+      font-size: .79rem;
+    }
+
+    @media (max-width: 560px) {
+      main { width: min(100% - 18px, 1010px); }
+      header { gap: 10px; margin-bottom: 13px; }
+      .game-panel { padding: 6px; border-radius: 10px; }
+      .hud { grid-template-columns: repeat(6, 1fr); gap: 4px; margin-bottom: 6px; }
+      .stat { grid-column: span 2; padding: 5px 6px; }
+      .stat:nth-child(n+4) { grid-column: span 3; }
+      .stat dt { font-size: .59rem; }
+      .stat dd { min-height: 1.15rem; font-size: .82rem; }
+      .menu { padding-inline: 12px; }
+      .menu > div { max-width: 67%; }
+      #start { min-height: 36px; padding: 6px 10px; }
+    }
+
+    @media (pointer: coarse), (max-width: 540px) {
+      .touch-controls { display: flex; }
+      .touch-guide { display: block; }
+    }
+
+    @media (pointer: coarse) {
+      .keyboard-guide { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <span class="flight-mark" aria-hidden="true"></span>
+      <div>
+        <h1>Starfighter</h1>
+        <p>Frontline Protocol</p>
+      </div>
+    </header>
+
+    <section class="game-panel" aria-label="Missão Starfighter">
+      <dl class="hud">
+        <div class="stat"><dt>Pontos</dt><dd id="score">000000</dd></div>
+        <div class="stat"><dt>Onda</dt><dd id="wave">– / 5</dd></div>
+        <div class="stat">
+          <dt>Casco</dt>
+          <dd id="hull" aria-label="3 de 3">
+            <span class="hull-segment filled" aria-hidden="true"></span>
+            <span class="hull-segment filled" aria-hidden="true"></span>
+            <span class="hull-segment filled" aria-hidden="true"></span>
+          </dd>
+        </div>
+        <div class="stat">
+          <dt>Carga do tiro</dt><dd><progress id="charge" max="1" value="0" aria-label="Carga do tiro"></progress></dd>
+        </div>
+        <div class="stat">
+          <dt>Energia do escudo</dt><dd><progress id="shield-energy" max="1" value="1" aria-label="Energia do escudo"></progress></dd>
+        </div>
+      </dl>
+
+      <div class="viewport">
+        <canvas width="960" height="540" aria-label="Campo espacial de combate em 2D">
+          O jogo precisa de um navegador com suporte a Canvas.
+        </canvas>
+        <div class="menu" id="menu">
+          <div>
+            <h2 id="mission-title" aria-live="polite">Defenda a fronteira</h2>
+            <p id="mission-copy">Enfrente cinco ondas e derrube a nave de comando.</p>
+            <button type="button" id="start">Iniciar missão</button>
+          </div>
+        </div>
+        <p class="notice" id="notice" role="status" hidden></p>
+      </div>
+
+      <div class="touch-controls" id="touch-controls" hidden>
+        <div class="direction-pad" role="group" aria-label="Direção da nave">
+          <button type="button" data-command="up" aria-label="Cima">↑</button>
+          <button type="button" data-command="left" aria-label="Esquerda">←</button>
+          <button type="button" data-command="down" aria-label="Baixo">↓</button>
+          <button type="button" data-command="right" aria-label="Direita">→</button>
+        </div>
+        <div class="touch-actions" role="group" aria-label="Ações da nave">
+          <button type="button" data-command="fire">Tiro</button>
+          <button type="button" data-command="shield">Escudo</button>
+        </div>
+      </div>
+
+      <div class="keyboard-guide" aria-label="Controles de teclado">
+        <span><kbd>WASD</kbd> / <kbd>Setas</kbd> mover</span>
+        <span><kbd>Espaço</kbd> disparar · segure e solte para tiro carregado</span>
+        <span><kbd>Shift</kbd> escudo</span>
+      </div>
+      <p class="touch-guide">Segure e solte o botão Tiro para disparar com carga.</p>
+    </section>
+  </main>
+
+  <script>
+    const canvas = document.querySelector("canvas");
+    const ctx = canvas.getContext("2d");
+    const menu = document.getElementById("menu");
+    const missionTitle = document.getElementById("mission-title");
+    const missionCopy = document.getElementById("mission-copy");
+    const startButton = document.getElementById("start");
+    const touchControls = document.getElementById("touch-controls");
+    const notice = document.getElementById("notice");
+    const score = document.getElementById("score");
+    const wave = document.getElementById("wave");
+    const hull = document.getElementById("hull");
+    const charge = document.getElementById("charge");
+    const shieldEnergy = document.getElementById("shield-energy");
+    const actions = ["up", "down", "left", "right", "fire", "shield"];
+    const bindings = {
+      ArrowUp: "up", KeyW: "up", ArrowDown: "down", KeyS: "down",
+      ArrowLeft: "left", KeyA: "left", ArrowRight: "right", KeyD: "right",
+      Space: "fire", ShiftLeft: "shield", ShiftRight: "shield"
+    };
+    const keys = new Set();
+    const pointers = new Map();
+    const connectionIssues = new Map();
+    const pendingInputs = [];
+    let lastInput = "";
+    let inputRequest = null;
+    let state = null;
+    let starting = false;
+    let missionRevision = 0;
+    let pollTimer;
+    let polling = false;
+    let lastDamage = -1000;
+
+    function connectionNotice(source, message = "") {
+      if (message) connectionIssues.set(source, message);
+      else connectionIssues.delete(source);
+      const latest = [...connectionIssues.values()].at(-1) ?? "";
+      if (notice.textContent !== latest) notice.textContent = latest;
+      notice.hidden = !latest;
+    }
+
+    async function request(path, options, timeout = 1800) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeout);
+      try {
+        const response = await fetch(path, {...options, signal: controller.signal});
+        if (!response.ok) throw new Error("Falha na comunicação com a missão.");
+        return response.status === 204 ? null : await response.json();
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    function updateGame(next) {
+      const previous = state;
+      state = next;
+      if (previous?.status === "playing" && next.hull < previous.hull) {
+        lastDamage = performance.now();
+      }
+      if (previous?.score !== next.score) {
+        score.textContent = String(next.score).padStart(6, "0");
+      }
+      if (previous?.wave !== next.wave) wave.textContent = (next.wave || "–") + " / 5";
+      if (previous?.hull !== next.hull) {
+        hull.setAttribute("aria-label", next.hull + " de " + next.max_hull);
+        [...hull.children].forEach((segment, index) => {
+          segment.classList.toggle("filled", index < next.hull);
+        });
+      }
+      if (previous?.player.charge !== next.player.charge) charge.value = next.player.charge;
+      if (previous?.player.energy !== next.player.energy) shieldEnergy.value = next.player.energy;
+
+      if (previous?.status === next.status) return;
+      menu.hidden = next.status === "playing";
+      touchControls.hidden = !menu.hidden;
+      if (next.status === "playing") {
+        lastDamage = -1000;
+        connectionNotice("start");
+        return;
+      }
+
+      clearInput(false);
+      connectionNotice("input");
+      const outcomes = {
+        ready: ["Defenda a fronteira", "Enfrente cinco ondas e derrube a nave de comando.", "Iniciar missão"],
+        won: ["Fronteira segura", "Nave de comando destruída. Você marcou " + next.score + " pontos.", "Jogar de novo"],
+        lost: ["Nave destruída", "Você marcou " + next.score + " pontos. Prepare-se para outra tentativa.", "Jogar de novo"]
+      };
+      const [title, copy, button] = outcomes[next.status];
+      missionTitle.textContent = title;
+      missionCopy.textContent = copy;
+      startButton.textContent = button;
+      if (previous?.status === "playing" && !document.hidden) startButton.focus();
+    }
+
+    async function pollState() {
+      if (polling) return;
+      clearTimeout(pollTimer);
+      polling = true;
+      const revision = missionRevision;
+      if (!starting) {
+        try {
+          const next = await request("/api/flight");
+          if (revision === missionRevision && !starting) {
+            updateGame(next);
+            connectionNotice("state");
+          }
+        } catch {
+          if (revision === missionRevision && !starting) {
+            connectionNotice("state", "Conexão interrompida. Reconectando…");
+          }
+        }
+      }
+      polling = false;
+      pollTimer = setTimeout(pollState, state?.status === "playing" && !document.hidden ? 33 : 450);
+    }
+
+    function sendInputs() {
+      if (inputRequest || pendingInputs.length === 0) return;
+      inputRequest = request("/api/flight/input", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: pendingInputs.shift()
+      }).then(() => connectionNotice("input")).catch(() => {
+        if (state?.status === "playing" && !starting) {
+          connectionNotice("input", "Comandos interrompidos. Reconectando…");
+          pendingInputs.length = 0;
+        }
+      }).finally(() => {
+        inputRequest = null;
+        sendInputs();
+      });
+    }
+
+    function queueInput(keepalive = false) {
+      if (state?.status !== "playing" || starting) return;
+      const held = new Set([...keys].map(key => bindings[key]));
+      for (const button of pointers.values()) held.add(button.dataset.command);
+      const payload = JSON.stringify(Object.fromEntries(actions.map(action => [action, held.has(action)])));
+      if (!keepalive && payload === lastInput) return;
+      lastInput = payload;
+      pendingInputs.push(payload);
+      sendInputs();
+    }
+
+    function clearInput(send = true) {
+      keys.clear();
+      for (const button of pointers.values()) button.classList.remove("pressed");
+      pointers.clear();
+      pendingInputs.length = 0;
+      lastInput = "";
+      if (send) queueInput();
+    }
+
+    async function startMission() {
+      if (starting) return;
+      starting = true;
+      missionRevision += 1;
+      startButton.disabled = true;
+      clearInput(false);
+      connectionNotice("start");
+
+      try {
+        await inputRequest;
+        const next = await request("/api/flight/start", {method: "POST"});
+        updateGame(next);
+        connectionNotice("state");
+      } catch {
+        connectionNotice("start", "Não foi possível iniciar a missão. Tente outra vez.");
+      } finally {
+        starting = false;
+        startButton.disabled = false;
+        pollState();
+      }
+    }
+
+    window.addEventListener("keydown", event => {
+      if (!Object.hasOwn(bindings, event.code) || state?.status !== "playing") return;
+      if (event.altKey || event.ctrlKey || event.metaKey) return;
+      event.preventDefault();
+      if (event.repeat) return;
+      keys.add(event.code);
+      queueInput();
+    });
+
+    window.addEventListener("keyup", event => {
+      if (!keys.delete(event.code)) return;
+      event.preventDefault();
+      queueInput();
+    });
+
+    window.addEventListener("blur", () => clearInput());
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) clearInput();
+    });
+
+    for (const button of touchControls.querySelectorAll("button")) {
+      button.addEventListener("pointerdown", event => {
+        if (event.button !== 0 || state?.status !== "playing") return;
+        event.preventDefault();
+        button.setPointerCapture(event.pointerId);
+        button.classList.add("pressed");
+        pointers.set(event.pointerId, button);
+        queueInput();
+      });
+
+      function releasePointer(event) {
+        if (!pointers.delete(event.pointerId)) return;
+        if (![...pointers.values()].includes(button)) button.classList.remove("pressed");
+        queueInput();
+      }
+
+      for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) {
+        button.addEventListener(type, releasePointer);
+      }
+    }
+
+    startButton.addEventListener("click", startMission);
+    setInterval(() => {
+      if (!inputRequest && pendingInputs.length === 0 && !document.hidden) queueInput(true);
+    }, 190);
+    pollState();
+
+    const {width, height} = canvas;
+    let seed = 27123;
+    function random() {
+      seed = (1664525 * seed + 1013904223) >>> 0;
+      return seed / 4294967296;
+    }
+
+    const stars = Array.from({length: 154}, () => ({
+      x: random() * width,
+      y: random() * height,
+      size: .65 + random() * 2.1,
+      depth: .1 + random() * .9,
+      light: .16 + random() * .65
+    }));
+
+    function polygon(points, fill, stroke) {
+      ctx.beginPath();
+      ctx.moveTo(points[0][0], points[0][1]);
+      for (const [x, y] of points.slice(1)) ctx.lineTo(x, y);
+      ctx.closePath();
+      ctx.fillStyle = fill;
+      ctx.fill();
+      if (stroke) {
+        ctx.strokeStyle = stroke;
+        ctx.stroke();
+      }
+    }
+
+    function ellipse(x, y, rx, ry, fill) {
+      ctx.beginPath();
+      ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+      ctx.fillStyle = fill;
+      ctx.fill();
+    }
+
+    function glow(x, y, color, radius) {
+      const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+      gradient.addColorStop(0, color);
+      gradient.addColorStop(1, "transparent");
+      ellipse(x, y, radius, radius, gradient);
+    }
+
+    function drawSky() {
+      ctx.fillStyle = "#050a17";
+      ctx.fillRect(0, 0, width, height);
+      glow(755, 271, "#283f6a", 465);
+      glow(385, 450, "#2c1a3d", 403);
+      glow(228, 50, "#162747", 333);
+
+      ctx.save();
+      ctx.translate(766, 211);
+      ctx.rotate(-.23);
+      ctx.strokeStyle = "#6880b436";
+      ctx.lineWidth = 2;
+      for (const index of [0, 1, 2, 3, 4, 5]) {
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 166 + index * 13, 53 + index * 4.2, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.rotate(.23);
+      glow(-31, -35, "#476ca9", 125);
+      const planet = ctx.createRadialGradient(-60, -58, 12, -1, 3, 133);
+      planet.addColorStop(0, "#7788ae");
+      planet.addColorStop(.52, "#374c73");
+      planet.addColorStop(.82, "#172741");
+      planet.addColorStop(1, "#0c1528");
+      ellipse(0, 0, 112, 112, planet);
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(0, 0, 111, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.lineWidth = 6;
+      for (const y of [-81, -53, -23, 8, 43, 70]) {
+        ctx.beginPath();
+        ctx.moveTo(-117, y + 31);
+        ctx.bezierCurveTo(-64, y - 12, 38, y + 1, 120, y - 24);
+        ctx.strokeStyle = "#b6c5e317";
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      ctx.rotate(-.23);
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "#9bb3d953";
+      for (const index of [0, 1, 2, 3, 4, 5]) {
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 166 + index * 13, 53 + index * 4.2, 0, .12, 3.02);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      ctx.fillStyle = "#101829";
+      ctx.fillRect(0, height - 5, width, 5);
+    }
+
+    const sky = document.createElement("canvas");
+    sky.width = width;
+    sky.height = height;
+    drawSky();
+    sky.getContext("2d").drawImage(canvas, 0, 0);
+
+    function drawStars(distance) {
+      for (const star of stars) {
+        const period = width + 20;
+        const x = ((star.x - distance * star.depth) % period + period) % period - 10;
+        ctx.globalAlpha = star.light;
+        ctx.fillStyle = star.depth > .78 ? "#e6f6ff" : "#9bb7d6";
+        ctx.fillRect(x, star.y, star.size * (1 + star.depth * 1.8), star.size * .65);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    function drawPlayer(player, now) {
+      ctx.save();
+      ctx.translate(player.x, player.y);
+      ctx.scale(player.w / 52, player.h / 32);
+      if (player.invulnerable) ctx.globalAlpha = .65;
+      const flame = 12 + 8 * (Math.sin(now * .043) + 1);
+      const jet = ctx.createLinearGradient(-27 - flame, 0, -17, 0);
+      jet.addColorStop(0, "#4ecfff00");
+      jet.addColorStop(.55, "#54cfff");
+      jet.addColorStop(1, "#e8ffff");
+      polygon([[-27 - flame, 0], [-19, -5], [-15, 0], [-19, 5]], jet);
+      polygon([[-23, -6], [-17, -15], [4, -12], [18, -6], [27, 0], [18, 6],
+        [4, 12], [-17, 15], [-23, 6], [-14, 0]], "#416c8c", "#9ebce1");
+      polygon([[-16, -10], [-10, -6], [17, -4], [27, 0], [13, 3], [-17, 6],
+        [-23, 4], [-23, -4]], "#edf9ff", "#bad7e7");
+      polygon([[-17, 14], [2, 10], [17, 5], [-7, 8], [-20, 7]], "#24374e");
+      polygon([[3, -6], [13, -4], [18, 0], [9, 1], [1, -1]], "#35b7da");
+      ctx.fillStyle = "#bdfcff";
+      ctx.fillRect(-14, -1, 12, 2);
+
+      if (player.charge > .05) {
+        glow(29, 0, "#8cd4ff", 8 + player.charge * 13);
+        ellipse(30, 0, 1 + player.charge * 4, 1 + player.charge * 4, "#fff");
+      }
+      if (player.shield) {
+        ellipse(0, 0, 35, 26, "#91d7ff22");
+        ctx.strokeStyle = "#a8deff";
+        ctx.lineWidth = 1.7;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 38, 29, 0, -.75, .75);
+        ctx.strokeStyle = "#edfaff";
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawEnemy(enemy, now) {
+      ctx.save();
+      ctx.translate(enemy.x, enemy.y);
+      ctx.scale(enemy.w / 52, enemy.h / 32);
+      if (enemy.kind === "boss") {
+        polygon([[-26, -7], [-17, -11], [-21, -15], [-8, -16], [7, -12], [21, -15],
+          [26, -8], [20, 0], [26, 8], [21, 15], [7, 12], [-8, 16], [-21, 15],
+          [-17, 11], [-26, 7], [-20, 0]], "#3e203d", "#f4869c");
+        polygon([[-23, -5], [-11, -10], [5, -6], [18, -9], [20, -3], [12, 0], [20, 3],
+          [18, 9], [5, 6], [-11, 10], [-23, 5], [-12, 0]], "#a24a68", "#fa9aab");
+        polygon([[-17, 0], [-9, -4], [4, -4], [11, 0], [4, 4], [-9, 4]], "#160e24");
+        glow(-5, 0, "#ff7694", 8);
+        ellipse(-5, 0, 4, 2, "#ffe9dc");
+        ctx.fillStyle = "#ffc481";
+        ctx.fillRect(16, -8, 5, 1.2);
+        ctx.fillRect(16, 7, 5, 1.2);
+      } else if (enemy.kind === "gunner") {
+        polygon([[-26, 0], [-16, -5], [-16, -13], [2, -15], [24, -11], [19, 0],
+          [24, 11], [2, 15], [-16, 13], [-16, 5]], "#583025", "#f0a06d");
+        polygon([[-16, -4], [-5, -7], [15, -4], [20, 0], [15, 4], [-5, 7],
+          [-16, 4], [-8, 0]], "#a65e42", "#ffa876");
+        ellipse(-7, 0, 4, 2, "#fff3b4");
+      } else {
+        polygon([[-26, 0], [-15, -7], [-4, -6], [12, -16], [23, -10], [20, 0],
+          [23, 10], [12, 16], [-4, 6], [-15, 7]], "#613742", "#e9868b");
+        polygon([[-23, 0], [-14, -4], [5, -5], [16, 0], [5, 5], [-14, 4]], "#d45c59");
+        ellipse(-8, 0, 4, 2, "#ffe4ac");
+      }
+      ctx.globalAlpha = .72 + Math.sin(now * .022 + enemy.y) * .22;
+      ellipse(21, 0, 8, 3.2, "#ffad6d");
+      ellipse(20, 0, 3.5, 1.4, "#fff2cb");
+      ctx.restore();
+    }
+
+    function drawShot(shot) {
+      const enemy = shot.kind === "enemy";
+      const strong = shot.kind === "charged";
+      const radius = Math.max(7, shot.h);
+      const core = enemy ? "#ffcf9c" : "#e8ffff";
+      glow(shot.x, shot.y, enemy ? "#ff6378" : "#4bd8ff", radius * 1.35);
+      if (strong) {
+        ellipse(shot.x, shot.y, shot.w / 2 + 4, shot.h / 2 + 2, "#5ce9ff");
+      }
+      ellipse(shot.x, shot.y, shot.w / 2, shot.h / 2, core);
+    }
+
+    function showBossHealth(boss) {
+      ctx.fillStyle = "#0a101dcc";
+      ctx.fillRect(width / 2 - 142, 12, 284, 37);
+      ctx.fillStyle = "#ffc4cf";
+      ctx.textAlign = "center";
+      ctx.font = "700 13px Segoe UI, sans-serif";
+      ctx.fillText("NAVE DE COMANDO", width / 2, 28);
+      ctx.fillStyle = "#442c45";
+      ctx.fillRect(width / 2 - 132, 35, 264, 5);
+      ctx.fillStyle = "#f38a9f";
+      ctx.fillRect(width / 2 - 132, 35, 264 * (boss.hull / boss.max_hull), 5);
+    }
+
+    function drawFrame(now) {
+      ctx.drawImage(sky, 0, 0);
+      const ready = !state || state.status === "ready";
+      const playing = state?.status === "playing";
+      drawStars(ready ? now * .024 : state.distance);
+
+      if (ready) {
+        const drift = Math.sin(now * .0015) * 10;
+        drawPlayer({x: 650, y: 307 + drift, w: 190, h: 115}, now);
+        drawEnemy({x: 864, y: 126, w: 33, h: 22, kind: "scout"}, now);
+        drawEnemy({x: 901, y: 174, w: 42, h: 29, kind: "gunner"}, now);
+      } else {
+        for (const enemy of state.enemies) drawEnemy(enemy, now);
+        for (const shot of state.shots) drawShot(shot);
+        for (const shot of state.enemy_shots) drawShot(shot);
+        if (state.hull > 0) drawPlayer(state.player, now);
+        const boss = state.enemies.find(enemy => enemy.kind === "boss");
+        if (boss && playing) showBossHealth(boss);
+        const pulse = 1 - (now - lastDamage) / 280;
+        if (playing && pulse > 0) {
+          ctx.strokeStyle = "rgba(255, 96, 121, " + (pulse * .7) + ")";
+          ctx.lineWidth = 8;
+          ctx.strokeRect(0, 0, width, height);
+        }
+      }
+      requestAnimationFrame(drawFrame);
+    }
+
+    requestAnimationFrame(drawFrame);
+  </script>
+</body>
+</html>
