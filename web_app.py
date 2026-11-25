@@ -14,7 +14,10 @@ from game import GameController
 WEB_DIRECTORY = Path(__file__).parent / "web"
 STATIC_FILES = {
     "/": (WEB_DIRECTORY / "index.html", "text/html; charset=utf-8"),
+    "/styles.css": (WEB_DIRECTORY / "styles.css", "text/css; charset=utf-8"),
+    "/app.js": (WEB_DIRECTORY / "app.js", "text/javascript; charset=utf-8"),
     "/assets/ships.png": (WEB_DIRECTORY / "ships.png", "image/png"),
+    "/assets/bosses.png": (WEB_DIRECTORY / "bosses.png", "image/png"),
 }
 
 
