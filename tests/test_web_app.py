@@ -37,6 +37,12 @@ class BrowserInterfaceTests(unittest.TestCase):
         self.assertIn("<canvas", page)
         self.assertIn("/api/flight/input", page)
 
+    def test_ship_sprites_are_served_as_a_png(self) -> None:
+        with urllib.request.urlopen(f"{self.base_url}/assets/ships.png", timeout=2) as response:
+            self.assertEqual(response.status, 200)
+            self.assertEqual(response.headers.get_content_type(), "image/png")
+            self.assertTrue(response.read().startswith(b"\x89PNG\r\n\x1a\n"))
+
     def test_flight_endpoints_start_a_mission_and_move_the_ship(self) -> None:
         with urllib.request.urlopen(f"{self.base_url}/api/flight", timeout=2) as response:
             self.assertEqual(json.load(response)["status"], "ready")

@@ -11,25 +11,19 @@ from flight import FlightController
 from game import GameController
 
 
-WEB_PAGE = Path(__file__).parent / "web" / "index.html"
+WEB_DIRECTORY = Path(__file__).parent / "web"
+STATIC_FILES = {
+    "/": (WEB_DIRECTORY / "index.html", "text/html; charset=utf-8"),
+    "/assets/ships.png": (WEB_DIRECTORY / "ships.png", "image/png"),
+}
 
 
 def create_handler(game: GameController, flight: FlightController) -> type[BaseHTTPRequestHandler]:
     class GameRequestHandler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:
             path = urlsplit(self.path).path
-            if path == "/":
-                try:
-                    page = WEB_PAGE.read_bytes()
-                except OSError as error:
-                    self._send_json(500, {"error": f"Cannot load browser interface: {error}"})
-                    return
-                self.send_response(200)
-                self.send_header("Content-Type", "text/html; charset=utf-8")
-                self.send_header("Content-Length", str(len(page)))
-                self.send_header("Cache-Control", "no-store")
-                self.end_headers()
-                self.wfile.write(page)
+            if path in STATIC_FILES:
+                self._send_file(*STATIC_FILES[path])
             elif path == "/api/state":
                 self._send_json(200, game.snapshot())
             elif path == "/api/flight":
@@ -100,10 +94,20 @@ def create_handler(game: GameController, flight: FlightController) -> type[BaseH
             if (path, code) not in {("/api/flight", 200), ("/api/flight/input", 204)}:
                 super().log_request(code, size)
 
+        def _send_file(self, path: Path, content_type: str) -> None:
+            try:
+                body = path.read_bytes()
+            except OSError:
+                self._send_json(500, {"error": f"Cannot load {path.name}."})
+                return
+            self._send_response(200, content_type, body)
+
         def _send_json(self, status: int, payload: dict[str, object]) -> None:
-            body = json.dumps(payload).encode("utf-8")
+            self._send_response(status, "application/json; charset=utf-8", json.dumps(payload).encode("utf-8"))
+
+        def _send_response(self, status: int, content_type: str, body: bytes) -> None:
             self.send_response(status)
-            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(len(body)))
             self.send_header("Cache-Control", "no-store")
             self.end_headers()
